@@ -1,1 +1,48 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>LineHop - HK Bus Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Load Mapbox -->
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    .eta-card {
+      position: absolute; bottom: 30px; left: 20px; right: 20px;
+      background: white; padding: 20px; border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-family: sans-serif; z-index: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+  
+  <div class="eta-card">
+    <h2 style="margin-top:0;">Nearest Stop</h2>
+    <p>Loading KMB data...</p>
+  </div>
+
+  <script>
+    // You will put your free Mapbox key here
+    mapboxgl.accessToken = 'YOUR_MAPBOX_API_KEY_HERE';
+    
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [114.1694, 22.3193], // Coordinates for Hong Kong
+      zoom: 13
+    });
+
+    // Add a simple marker
+    const marker = new mapboxgl.Marker()
+      .setLngLat([114.1694, 22.3193])
+      .addTo(map);
+  </script>
+
+</body>
+</html>
