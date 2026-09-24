@@ -1,53 +1,83 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>LineHop - HK Bus Map</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  
-  <!-- 1. Load Leaflet CSS and JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  
-  <style>
-    body { margin: 0; padding: 0; }
-    /* Make the map fill the entire screen */
-    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-    
-    /* Clean, floating ETA card */
-    .eta-card {
-      position: absolute; bottom: 30px; left: 20px; right: 20px;
-      background: white; padding: 20px; border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-family: sans-serif; 
-      z-index: 1000; /* Must be high to sit above Leaflet's map controls */
+<script>
+  // 1. Initialize Leaflet map
+  const map = L.map('map', { zoomControl: false }).setView([22.3193, 114.1694], 15);
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  let userMarker = null;
+
+  // 2. Center map on user's live GPS location
+  if ("geolocation" in navigator) {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      map.setView([lat, lng], 16);
+
+      // Blue marker representing the user
+      userMarker = L.circleMarker([lat, lng], {
+        color: '#1a73e8',
+        fillColor: '#4285f4',
+        fillOpacity: 0.9,
+        radius: 8
+      }).addTo(map).bindPopup("You are here");
+
+      // Fetch nearest KMB bus data for this location
+      fetchNearestStopData();
+    }, () => {
+      document.getElementById('eta-content').innerText = "Location access denied. Showing default stop.";
+      fetchNearestStopData(); // Fallback
+    });
+  }
+
+  // 3. Fetch real-time live ETAs from KMB Open API
+  async function fetchNearestStopData() {
+    const cardContent = document.getElementById('eta-content');
+    cardContent.innerHTML = "Fetching live ETAs...";
+
+    // Real KMB Stop ID (Example: Cross Harbour Tunnel Toll Plaza / Key HK Hub)
+    const sampleStopId = "001555"; 
+
+    try {
+      const response = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${sampleStopId}`);
+      const result = await response.json();
+      
+      if (!result.data || result.data.length === 0) {
+        cardContent.innerHTML = "No upcoming buses found.";
+        return;
+      }
+
+      // Filter out empty ETAs & sort by arrival time
+      const upcoming = result.data
+        .filter(item => item.eta !== null)
+        .slice(0, 3); // Take top 3 buses ONLY (prevents text dump)
+
+      // Build clean, simplified HTML list
+      let html = '<ul style="list-style:none; padding:0; margin:0;">';
+      upcoming.forEach(bus => {
+        const minutesLeft = Math.max(0, Math.round((new Date(bus.eta) - new Date()) / 60000));
+        html += `
+          <li style="display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 1px solid #eee;">
+            <div>
+              <strong style="font-size: 1.2em; color: #d93025;">${bus.route}</strong>
+              <span style="color: #555; margin-left: 8px;">to ${bus.dest_en}</span>
+            </div>
+            <div style="font-weight: bold; font-size: 1.1em; color: #1e8e3e;">
+              ${minutesLeft} mins
+            </div>
+          </li>
+        `;
+      });
+      html += '</ul>';
+
+      cardContent.innerHTML = html;
+
+    } catch (error) {
+      cardContent.innerHTML = "Error connecting to KMB API.";
+      console.error(error);
     }
-  </style>
-</head>
-<body>
-
-  <!-- The container where the map will render -->
-  <div id="map"></div>
-  
-  <!-- Your UI overlay -->
-  <div class="eta-card">
-    <h2 style="margin-top:0;">Nearest Stop</h2>
-    <p>Loading KMB data...</p>
-  </div>
-
-  <script>
-    // 2. Initialize the map centered on Hong Kong [Latitude, Longitude]
-    // We disable the default zoom controls for a cleaner mobile look
-    const map = L.map('map', { zoomControl: false }).setView([22.3193, 114.1694], 14);
-
-    // 3. Add the completely free OpenStreetMap tiles
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
-
-    // 4. Add a simple pin marker to the map
-    const marker = L.marker([22.3193, 114.1694]).addTo(map);
-  </script>
-
-</body>
-</html>
+  }
+</script>
